@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.15.0-41-generic-x86_64-with-glibc2.31",
+    "python": "3.10.4",
+    "heartbeatAt": "2022-08-02T16:25:12.164666",
+    "startedAt": "2022-08-02T16:25:11.426929",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3060",
+    "gpu_count": 1,
+    "cpu_count": 2,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/sj/Projects/Causal-Discovery/Pytorch-Lightning/workspace/lightning-hydra-template/src/train.py",
+    "codePath": "src/train.py",
+    "git": {
+        "remote": "https://github.com/ashleve/lightning-hydra-template.git",
+        "commit": "9e7089ce70dac66096576c6596e966d4c38cbdce"
+    },
+    "email": null,
+    "root": "/home/sj/Projects/Causal-Discovery/Pytorch-Lightning/workspace/lightning-hydra-template",
+    "host": "ubuntu-gpu",
+    "username": "sj",
+    "executable": "/home/sj/.conda/envs/pl/bin/python"
+}

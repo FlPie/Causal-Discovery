@@ -1,0 +1,24 @@
+{
+    "os": "Linux-5.15.0-43-generic-x86_64-with-glibc2.31",
+    "python": "3.10.4",
+    "heartbeatAt": "2022-08-21T21:33:27.225101",
+    "startedAt": "2022-08-21T21:33:26.727849",
+    "docker": null,
+    "gpu": "NVIDIA GeForce RTX 3060",
+    "gpu_count": 1,
+    "cpu_count": 2,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/sj/Projects/Causal-Discovery/Pytorch-Lightning/workspace/lightning-hydra-template/src/train.py",
+    "codePath": "lightning-hydra-template/src/train.py",
+    "git": {
+        "remote": "https://gitea.local.flpie.org/gitea/CausalDiscovery.git",
+        "commit": "8418676cf061c03fc057421d4a1cf38771d651b2"
+    },
+    "email": "flpie@ubungu-gpu.lan.flpie.org",
+    "root": "/home/sj/Projects/Causal-Discovery/Pytorch-Lightning/workspace",
+    "host": "ubuntu-gpu",
+    "username": "sj",
+    "executable": "/home/sj/.conda/envs/pl/bin/python"
+}

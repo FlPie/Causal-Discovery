@@ -1,0 +1,5 @@
+
+_target_: src.datamodules.sachs_datamodule.SachsDataModule
+data: ${paths.data_dir}/sachs_dataset
+batch_size: 512
+shuffle: True

@@ -1,0 +1,12 @@
+_target_: src.models.DAG_GCN_module.DAG_GCN
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+num_features: 11
+batch_size: 1
+hidden_size: 64
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv

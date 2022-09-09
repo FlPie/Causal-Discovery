@@ -85,3 +85,11 @@ class SachsDataModule(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             shuffle=self.hparams.shuffle,
             drop_last=True)
+
+
+    def val_dataloader(self):
+        return pyg.loader.DataLoader(
+            self.data_train,
+            batch_size=self.hparams.batch_size,
+            shuffle=self.hparams.shuffle,
+            drop_last=True)

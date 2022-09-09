@@ -16,6 +16,8 @@ import pytorch_lightning as pl
 
 import torch_geometric as pyg
 
+# from graphviz import Source
+
 
 MAX_LOGSTD=10
 
@@ -148,13 +150,14 @@ class DAG_GNN(pl.LightningModule):
         gt_df = pd.read_csv(self.hparams.gt_path, index_col=0)
         self.ground_truth_G = nx.from_pandas_adjacency(gt_df, create_using=nx.DiGraph)
         
-        # self.adj_A = torch.zeros(
-        #     [self.hparams.num_features,self.hparams.num_features], 
-        #     dtype=torch.float)
-        gt_np = nx.to_numpy_array(self.ground_truth_G)
-        gt_np = gt_np * 0.3
-        gt_np[2:,2:] = 0
-        self.adj_A = torch.tensor(gt_np)
+        self.adj_A = torch.zeros(
+            [self.hparams.num_features,self.hparams.num_features], 
+            dtype=torch.float)
+        # gt_np = nx.to_numpy_array(self.ground_truth_G)
+        # gt_np = gt_np * 0.3
+        # gt_np[2:,2:] = 0
+        # self.adj_A = torch.tensor(gt_np)
+        self.adj_A_new = self.adj_A
 
         self.encoder = GNNEncoder(
                 in_channels=self.hparams.num_features * self.hparams.batch_size,
@@ -230,13 +233,38 @@ class DAG_GNN(pl.LightningModule):
             pass
 
 
-    def validation_epoch_end(self):
-        A_new = self.adj_A_new.clone()
-        m = A_new.shape[0]
-        h_A_new = self._h_A(A_new, m)
-        self.h_A = h_A_new.item()
-        self.lambda_A += self.c_A * h_A_new.item()
-        self.update_optimizer()
+    def validation_step(self, batch, batch_idx):
+        self.log('val/acc', 0)
+        return 0
+        
+        
+    def validation_epoch_end(self, val_step_out):
+        adj_hat = self.adj_A_new
+        graph = adj_hat.cpu().clone().detach().numpy()
+        graph[graph < self.threshold] = 0
+        graph = nx.DiGraph(graph)
+        # dot = nx.drawing.nx_pydot.to_pydot(graph)
+        options = {
+            "font_size": 20,
+            "node_size": 1000,
+            "node_color": "white",
+            "edgecolors": "black",
+            "linewidths": 2,
+            "width": 2,
+        }
+        nx.draw(graph, with_labels=True, **options)
+        ax = plt.gca()
+        plt.axis("off")
+        plt.draw()
+        plt.savefig("./fig.png")
+        wandb.log({"val/graph": wandb.Image('./fig.png')})
+        plt.clf()
+        # A_new = self.adj_A_new.clone()
+        # m = A_new.shape[0]
+        # h_A_new = self._h_A(A_new, m)
+        # self.h_A = h_A_new.item()
+        # self.lambda_A += self.c_A * h_A_new.item()
+        # self.update_optimizer()
 
 
     def configure_optimizers(self):

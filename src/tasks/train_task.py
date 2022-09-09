@@ -61,15 +61,6 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
     if cfg.get("train"):
         log.info("Starting training!")
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
-        # for step_k in range(cfg.get("k_max_iter")):
-        #     trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))
-        #     A_new = model.adj_A_new.clone()
-        #     m = A_new.shape[0]
-        #     h_A_new = model._h_A(A_new, m)
-        #     model.h_A = h_A_new.item()
-        #     model.lambda_A += model.c_A * h_A_new.item()
-        #     model.update_optimizer()
-        #     trainer.Fitloop.epoch_progress.reset_on_epoch()
 
     train_metrics = trainer.callback_metrics
 

@@ -84,13 +84,6 @@ class NonLinerTransformer(nn.Module):
 class CAE(pl.LightningModule):
     def __init__(
         self, 
-        d=11, 
-        n_dim=1, 
-        n_hid=4, 
-        n_latent=4, 
-        n_layer=3, 
-        lambda_sparsity=1.0, 
-        psp=False,
         *args, 
         **kwargs):
         """
@@ -108,31 +101,40 @@ class CAE(pl.LightningModule):
         self.save_hyperparameters(logger=False)
 
         # constant
-        self._d = d
-        self._l1 = lambda_sparsity
-        self._psp = psp
+        self._d = self.hparams.d
+        self._l1 = self.hparams.lambda_sparsity
+        self._psp = self.hparams.psp
+
         # ground truth adj matric
-        gt_df = pd.read_csv(self.hparams.gt_path, index_col=0)
-        self.ground_truth_G = nx.from_pandas_adjacency(gt_df, create_using=nx.DiGraph)
+        self.gt_df = pd.read_csv(self.hparams.gt_path, index_col=0)
+        self.ground_truth_G = nx.from_pandas_adjacency(self.gt_df, create_using=nx.DiGraph)
 
         # hparams
         self.alpha = 0.0
         self.rho = 1.0
         self.graph_thresh = 0.3
+        self.n_dim = self.hparams.n_dim
+        self.n_hid = self.hparams.n_hid
+        self.n_latent = self.hparams.n_latent
+        self.n_layers = self.hparams.n_layers
 
         # Non-linear transformer for data dimensions
-        self.encoder = NonLinerTransformer(n_dim, n_hid, n_latent, n_layer)
-        self.decoder = NonLinerTransformer(n_latent, n_hid, n_dim, n_layer)
+        self.encoder = NonLinerTransformer(
+            self.n_dim, self.n_hid, 
+            self.n_latent, self.n_layers)
+        self.decoder = NonLinerTransformer(
+            self.n_latent, self.n_hid, 
+            self.n_dim, self.n_layers)
 
         # Test: Non-linear invertible transformer for data dimensions
         # self.encoder = InvTransformer(n_dim, n_hid, n_latent, n_layer)
         # self.decoder = InvTransformer(n_latent, n_hid, n_dim, n_layer)
 
         # initial value of W has substantial impact on model performance
-        _mask = torch.Tensor(1 - np.eye(d))
+        _mask = torch.Tensor(1 - np.eye(self._d))
         self.register_buffer("_mask", _mask)
         self._W_pre = nn.Parameter(
-            torch.Tensor(np.random.uniform(low=-0.1, high=0.1, size=(d, d)))
+            torch.Tensor(np.random.uniform(low=-0.1, high=0.1, size=(self._d, self._d)))
         )
 
         self.optimizer = self.hparams.optimizer(params=self.parameters())
@@ -169,6 +171,14 @@ class CAE(pl.LightningModule):
 
         return loss, loss_mse, loss_sparsity, h, self.W
 
+    def on_train_start(self) -> None:
+        # log gt adj mat
+        plt.imshow(self.gt_df)
+        plt.colorbar()
+        wandb.log({"gt_plot": plt})
+        plt.clf()
+        return None
+    
     def training_step(self, batch):
         loss, loss_mse, loss_sparsity, h, W = self.forward(batch.x)
         return {
@@ -181,7 +191,7 @@ class CAE(pl.LightningModule):
 
     def training_epoch_end(self, outputs) -> None:
         final = outputs[-1]
-        self.log("train/losses", final, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/", final, on_step=False, on_epoch=True, prog_bar=False)
 
         W = final['W']
         W = W.cpu().detach().cpu().numpy()
@@ -193,6 +203,13 @@ class CAE(pl.LightningModule):
         accu = self._count_accuracy(self.ground_truth_G, graph)
 
         self.log("train/accu", accu, on_step=False, on_epoch=True, prog_bar=False)
+
+        if self.current_epoch % 10 == 0:
+            plt.imshow(causal_matrix)
+            plt.colorbar()
+            wandb.log({"adj_plot": plt})
+            plt.clf()
+        
         return None
 
     def configure_optimizers(self):

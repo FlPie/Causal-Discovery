@@ -1,4 +1,5 @@
 import os
+from random import shuffle
 from tqdm import tqdm
 
 import pandas as pd
@@ -53,7 +54,49 @@ class SachsDataset(pyg.data.InMemoryDataset):
         torch.save((data, slices), self.processed_paths[0])
 
 
-class SachsDataModule(pl.LightningDataModule):
+class SachsDataModule(pyg.data.LightningDataset):
+    def __init__(
+        self,
+        data: str,
+        batch_size: int = 64,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        **kwargs
+    ):
+        # this line allows to access init params with 'self.hparams' attribute
+        self.save_hyperparameters(logger=False)
+
+        self.data_train = None
+
+        self.setup()
+
+        super().__init__(
+            train_dataset=self.data_train,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=self.hparams.shuffle,
+            drop_last=True,
+        )
+
+    def load_data(self, root, transform=None, pre_transform=None, pre_filter=None):
+        return SachsDataset(root)
+
+    def x_load_data(self, root, transform=None, pre_transform=None, pre_filter=None):
+        raw_path = self.hparams.data + "/raw/sachs.csv"
+        df = pd.read_csv(raw_path, index_col=1).reset_index()
+        data_list = []
+        for index, feature in tqdm(df.iterrows(), total=df.shape[0]):
+            x = torch.tensor(feature.values, dtype=torch.float)
+            data = pyg.data.Data(x=x)
+            data_list.append(data)
+        return data_list
+
+    def setup(self, stage=None):
+        if not self.data_train:
+            self.data_train = self.load_data(root=self.hparams.data)
+
+
+class x_SachsDataModule(pl.LightningDataModule):
     def __init__(
         self,
         data: str,
@@ -80,7 +123,7 @@ class SachsDataModule(pl.LightningDataModule):
 
 
     def train_dataloader(self):
-        return pyg.loader.DataLoader(
+        return torch.util.data.DataLoader(
             self.data_train,
             batch_size=self.hparams.batch_size,
             shuffle=self.hparams.shuffle,
@@ -88,7 +131,7 @@ class SachsDataModule(pl.LightningDataModule):
 
 
     def val_dataloader(self):
-        return pyg.loader.DataLoader(
+        return torch.util.data.DataLoader(
             self.data_train,
             batch_size=self.hparams.batch_size,
             shuffle=self.hparams.shuffle,

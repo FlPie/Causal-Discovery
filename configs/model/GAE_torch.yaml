@@ -1,0 +1,9 @@
+_target_: src.models.GAE_torch.CAE
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1e-3
+  weight_decay: 0.0
+  
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv

@@ -6,4 +6,12 @@ optimizer:
   lr: 1e-3
   weight_decay: 0.0
   
+d: 11
+n_dim: 1
+n_hid: 4
+n_latent: 4
+n_layers: 3
+lambda_sparsity: 1.0
+psp: False
+
 gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv

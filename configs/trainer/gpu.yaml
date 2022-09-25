@@ -1,5 +1,6 @@
 defaults:
   - default.yaml
 
+strategy: SingleDevicePlugin
 accelerator: gpu
 devices: 1

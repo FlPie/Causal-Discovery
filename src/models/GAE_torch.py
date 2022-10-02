@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 import wandb
 import hydra
@@ -173,7 +174,7 @@ class CAE(pl.LightningModule):
 
     def on_train_start(self) -> None:
         # log gt adj mat
-        plt.imshow(self.gt_df)
+        plt.imshow(self.gt_df, vmin=-1, vmax=1, cmap=cm.bwr)
         plt.colorbar()
         wandb.log({"gt_plot": plt})
         plt.clf()
@@ -181,6 +182,11 @@ class CAE(pl.LightningModule):
     
     def training_step(self, batch):
         loss, loss_mse, loss_sparsity, h, W = self.forward(batch.x)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/loss_mse", loss_mse, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/loss_sparsity", loss_sparsity, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/h", h, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("train/W", W, on_step=False, on_epoch=True, prog_bar=False)
         return {
             'loss': loss,
             'loss_mse': loss_mse,
@@ -191,7 +197,7 @@ class CAE(pl.LightningModule):
 
     def training_epoch_end(self, outputs) -> None:
         final = outputs[-1]
-        self.log("train/", final, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/", final, on_step=False, on_epoch=True, prog_bar=False)
 
         W = final['W']
         W = W.cpu().detach().cpu().numpy()
@@ -205,7 +211,7 @@ class CAE(pl.LightningModule):
         self.log("train/accu", accu, on_step=False, on_epoch=True, prog_bar=False)
 
         if self.current_epoch % 10 == 0:
-            plt.imshow(causal_matrix)
+            plt.imshow(causal_matrix, vmin=-1, vmax=1, cmap=cm.bwr)
             plt.colorbar()
             wandb.log({"adj_plot": plt})
             plt.clf()

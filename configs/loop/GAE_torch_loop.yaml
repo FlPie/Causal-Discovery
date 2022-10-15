@@ -2,3 +2,4 @@ _target_: src.loops.GAE_torch_loop.GAE_torch_FitLoop
 
 min_epochs: ${trainer.min_epochs}
 max_epochs: ${trainer.max_epochs}
+update_freq: 10

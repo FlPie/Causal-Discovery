@@ -67,11 +67,13 @@ class SachsDataModule(pyg.data.LightningDataset):
         self.save_hyperparameters(logger=False)
 
         self.data_train = None
+        self.data_val = None
 
         self.setup()
 
         super().__init__(
             train_dataset=self.data_train,
+            val_dataset=self.data_val,
             batch_size=batch_size,
             num_workers=num_workers,
             shuffle=self.hparams.shuffle,
@@ -94,7 +96,8 @@ class SachsDataModule(pyg.data.LightningDataset):
     def setup(self, stage=None):
         if not self.data_train:
             self.data_train = self.load_data(root=self.hparams.data)
-
+        if not self.data_val:
+            self.data_val = self.load_data(root=self.hparams.data)
 
 class x_SachsDataModule(pl.LightningDataModule):
     def __init__(

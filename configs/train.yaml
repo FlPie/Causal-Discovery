@@ -5,14 +5,14 @@
 defaults:
   - _self_
   - datamodule: sachs.yaml
-  - model: GAE_torch.yaml
+  - model: DAG_GNN_wGCN.yaml
   - callbacks: default.yaml
   - logger: wandb.yaml # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
   - paths: default.yaml
   - extras: default.yaml
   - hydra: default.yaml
-  - loop: GAE_torch_loop.yaml
+  - loop: DAG_GNN_wGCN_loop.yaml
 
   # experiment configs allow for version control of specific hyperparameters
   # e.g. best hyperparameters for given model and datamodule

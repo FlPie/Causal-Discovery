@@ -1,0 +1,22 @@
+_target_: src.models.DAG_GNN_wGCN_module.DAG_GNN_wGCN
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.01
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  _partial_: true
+  step_size: 100
+  gamma: 1.0
+
+num_features: 11
+batch_size: 512
+hidden_size: 64
+gcn_size: 16
+threshold: 0.3
+
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+raw_path: ${paths.data_dir}/sachs_dataset/raw/sachs.csv

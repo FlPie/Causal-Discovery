@@ -64,6 +64,7 @@ class NonLinerTransformer(nn.Module):
         fc_layers = [nn.Linear(pair[0], pair[1]) for pair in dims]
         # bn_layers = [BatchNorm(n_hid) for _ in range(n_layer)]
         lr_layers = [nn.LeakyReLU(0.05) for _ in range(n_layer)]
+        # lr_layers = [nn.ReLU() for _ in range(n_layer)]
         layers = []
         for i in range(n_layer):
             layers.append(fc_layers[i])
@@ -113,11 +114,22 @@ class CAE(pl.LightningModule):
         # hparams
         self.alpha = 0.0
         self.rho = 1.0
-        self.graph_thresh = 0.3
+        self.graph_thresh = 0.0
         self.n_dim = self.hparams.n_dim
         self.n_hid = self.hparams.n_hid
         self.n_latent = self.hparams.n_latent
         self.n_layers = self.hparams.n_layers
+        ####
+        self.alpha = 0.0
+        self.beta = 2.0
+        self.gamma = 0.25
+        self.rho = 1.0
+        self.rho_thresh = 1e30
+        self.h_thresh = 1e-8
+        self.early_stopping_thresh = 1.0
+        self.early_stopping = False
+        self.h, self.h_new = np.inf, 0
+        self.perv_w_est, self.prev_mse = None, np.inf
 
         # Non-linear transformer for data dimensions
         self.encoder = NonLinerTransformer(
@@ -137,6 +149,13 @@ class CAE(pl.LightningModule):
         self._W_pre = nn.Parameter(
             torch.Tensor(np.random.uniform(low=-0.1, high=0.1, size=(self._d, self._d)))
         )
+        self.final = {
+            'loss': 0,
+            'loss_mse': 0,
+            'loss_sparsity': 0,
+            'h': self.h,
+            'W': self._W_pre,
+        }
 
         self.optimizer = self.hparams.optimizer(params=self.parameters())
 
@@ -174,7 +193,7 @@ class CAE(pl.LightningModule):
 
     def on_train_start(self) -> None:
         # log gt adj mat
-        plt.imshow(self.gt_df, vmin=-1, vmax=1, cmap=cm.bwr)
+        plt.imshow(self.gt_df, vmin=-1, vmax=1, cmap=cm.RdBu_r)
         plt.colorbar()
         wandb.log({"gt_plot": plt})
         plt.clf()
@@ -186,7 +205,7 @@ class CAE(pl.LightningModule):
         self.log("train/loss_mse", loss_mse, on_step=False, on_epoch=True, prog_bar=False)
         self.log("train/loss_sparsity", loss_sparsity, on_step=False, on_epoch=True, prog_bar=False)
         self.log("train/h", h, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/W", W, on_step=False, on_epoch=True, prog_bar=False)
+        # self.log("train/W", W, on_step=True, on_epoch=True, prog_bar=False)
         return {
             'loss': loss,
             'loss_mse': loss_mse,
@@ -199,8 +218,22 @@ class CAE(pl.LightningModule):
         final = outputs[-1]
         # self.log("train/", final, on_step=False, on_epoch=True, prog_bar=False)
 
-        W = final['W']
-        W = W.cpu().detach().cpu().numpy()
+        # update rho
+        self.h_new = final['h']
+        if self.h_new > self.gamma * self.h:
+            self.rho *= self.beta
+        
+        self.final = final
+
+        return None
+
+    def validation_step(self, batch, batch_idx):
+        self.log('val/acc', 0)
+        return 0
+
+    def validation_epoch_end(self, outputs) -> None:
+        W = self.final['W']
+        W = W.detach().cpu().numpy()
         W = W / np.max(np.abs(W))
         W[abs(W) < self.graph_thresh] = 0
         causal_matrix = W
@@ -208,15 +241,31 @@ class CAE(pl.LightningModule):
 
         accu = self._count_accuracy(self.ground_truth_G, graph)
 
-        self.log("train/accu", accu, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val/accu", accu, on_step=False, on_epoch=True, prog_bar=False)
 
-        if self.current_epoch % 10 == 0:
-            plt.imshow(causal_matrix, vmin=-1, vmax=1, cmap=cm.bwr)
-            plt.colorbar()
-            wandb.log({"adj_plot": plt})
-            plt.clf()
+        plt.imshow(causal_matrix, vmin=-1, vmax=1, cmap=cm.RdBu_r)
+        plt.colorbar()
+        wandb.log({"adj_plot": plt})
+        plt.clf()
+
+        # update alpha
+        mse_new = self.final['loss_mse']
         
-        return None
+        if self.early_stopping:
+            if (mse_new / self.prev_mse > self.early_stopping_thresh
+                and self.h_new <= 1e-7):
+                return
+            else:
+                self.prev_w_est = self.final['W']
+                self.prev_mse = mse_new
+        
+        w_est, self.h = self.final['W'], self.final['h']
+        self.alpha += self.rho * self.h_new
+
+        # print(f"alpha:{self.alpha}, rho:{self.rho}")
+
+        if self.h <= self.h_thresh:
+            return
 
     def configure_optimizers(self):
         return {

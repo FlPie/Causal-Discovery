@@ -1,4 +1,3 @@
-from inspect import Parameter
 from typing import Optional, Any, T
 
 import numpy as np
@@ -6,7 +5,11 @@ import numpy as np
 from pytorch_lightning.loops import FitLoop, TrainingEpochLoop, TrainingBatchLoop
 from pytorch_lightning.loops.utilities import _is_max_limit_reached, _set_sampler_epoch
 
-class DAG_GNN_wGCN_FitLoop(FitLoop):
+class DAG_GCN_FitLoop(FitLoop):
+    def __init__(self, min_epochs: int = 0, max_epochs: int = 1000, k_max_iter: int=10) -> None:
+        super().__init__(min_epochs, max_epochs)
+        self.k_max_iter = k_max_iter
+
     def reset(self) -> None:
         self.current_iteration = 0
         self.outputs = []
@@ -15,7 +18,7 @@ class DAG_GNN_wGCN_FitLoop(FitLoop):
         return super().reset()
 
     def run(self, *args: Any, **kwargs: Any) -> T:
-        for i in range(20):
+        for i in range(self.k_max_iter):
             while self.trainer.model.c_A < 1e+20:
                 # reset for training model again
                 self.reset()
@@ -24,8 +27,8 @@ class DAG_GNN_wGCN_FitLoop(FitLoop):
                 # self._debug_loop_done(i)
                 
                 # update c & lambda
-                A_new = self.trainer.model.adj_A_new.data.clone()
-                h_A_new = self.trainer.model._h_A(A_new, A_new.shape[0])
+                A_new = self.trainer.model.dense_adj.data.clone()
+                h_A_new = self.trainer.model._h_A(A_new)
                 if h_A_new.item() > 0.25 * self.trainer.model.h_A:
                     self.trainer.model.c_A *= 10
                 else:

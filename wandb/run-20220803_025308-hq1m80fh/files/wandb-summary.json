@@ -1,1 +1,0 @@
-{"train/adj_plot": {"_type": "image-file", "sha256": "90c26078c353bb40c8abde4a6885f44906688f2a15c81d9d7d023d471a440f24", "size": 12682, "path": "media/images/train/adj_plot_598_90c26078c353bb40c8ab.png", "format": "png", "width": 640, "height": 480}, "_timestamp": 1659462859, "_runtime": 71, "_step": 599, "epoch": 299, "trainer/global_step": 4199, "_wandb": {"runtime": 71}}

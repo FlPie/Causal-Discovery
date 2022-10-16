@@ -1,0 +1,10 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=DAG_GCN
+defaults:
+  - override /datamodule: sachs.yaml
+  - override /model: DAG_GCN.yaml
+  - override /loop: DAG_GCN_loop.yaml
+
+tags: ["sachs", "DAG_GCN"]

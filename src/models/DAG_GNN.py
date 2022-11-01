@@ -16,14 +16,14 @@ import pytorch_lightning as pl
 
 import wandb
 
-from .components.DAG_GCN_components import DAG_GCN_Encoder, DAG_GCN_Decoder
+from .components.DAG_GCN_components import DAG_GNN_Encoder, DAG_GNN_Decoder
 from .components import DAG_utils as DAG_utils
 
 
-class DAG_GCN(pl.LightningModule):
+class DAG_GNN(pl.LightningModule):
     def __init__(self,
-                 encoder: DAG_GCN_Encoder,
-                 decoder: DAG_GCN_Decoder,
+                 encoder: DAG_GNN_Encoder,
+                 decoder: DAG_GNN_Decoder,
                  optimizer: torch.optim.Optimizer,
                  scheduler: torch.optim.lr_scheduler._LRScheduler=None,
                  lambda_A: float=0.0,
@@ -35,11 +35,12 @@ class DAG_GCN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters(logger=False)
 
-        self.dense_adj = np.random.uniform(low=self.hparams.adj_low, 
-                                           high=self.hparams.adj_high,
+        self.dense_adj = np.random.uniform(low=-0.1, high=0.1,
                                            size=(self.hparams.num_features,self.hparams.num_features))
         self.encoder = encoder
-        self.encoder.set_dense_adj(self.dense_adj, init=self.hparams.init)
+        self.encoder.set_dense_adj(self.dense_adj)
+        self.W = torch.zeros(1, self.encoder.out_channels, dtype=torch.float)
+        self.encoder.set_W(self.W)
         self.decoder = decoder
         self.optimizer = optimizer
         self.scheduler = scheduler
@@ -64,16 +65,9 @@ class DAG_GCN(pl.LightningModule):
         self.gamma = gamma
         self.graph_threshold = graph_threshold
 
-        self.best_shd_G = self.ground_truth_G
-        self.best_shd = np.inf
-        self.best_tpr_G = self.ground_truth_G
-        self.best_tpr = 0
-        self.best_loss_G = self.ground_truth_G
-        self.best_loss = np.inf
-
     def forward(self, X):
-        Z, self.dense_adj = self.encoder(X)
-        X_hat = self.decoder(Z, self.dense_adj)
+        Z, self.dense_adj, self.W = self.encoder(X)
+        X_hat = self.decoder(Z, self.dense_adj, self.W)
         return Z, self.dense_adj, X_hat
     
     def step(self, batch, batch_idx):
@@ -88,16 +82,11 @@ class DAG_GCN(pl.LightningModule):
         gt_graph_img, gt_adj_img = DAG_utils.get_plot_imgs(self.gt_df, self.ground_truth_G, self.ground_truth_G)
         wandb.log({'gt/graph': wandb.Image(gt_graph_img)})
         wandb.log({'gt/adj': wandb.Image(gt_adj_img)})
-        # init bests
-        self.best_shd = np.inf
-        self.best_tpr = 0
-        self.best_loss = np.inf
 
     def training_step(self, batch, batch_idx):
         Z, self.dense_adj, X_hat, loss, losses = self.step(batch, batch_idx)
         self.log('train/loss', loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log('train/losses', losses, on_step=False, on_epoch=True, prog_bar=False)
-        # update best
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -109,26 +98,11 @@ class DAG_GCN(pl.LightningModule):
 
         accu = DAG_utils.count_accuracy(self.ground_truth_G, G)
         self.log('train/accu', accu, on_step=False, on_epoch=True, prog_bar=False)
-        self.log('shd', accu['shd'], on_step=False, on_epoch=True, prog_bar=False)
-        self.log('tpr', accu['tpr'], on_step=False, on_epoch=True, prog_bar=False)
-        self.log('fdr', accu['fdr'], on_step=False, on_epoch=True, prog_bar=False)
 
         if self.current_epoch % self.hparams.plot_every == 0:
             graph_img, adj_img = DAG_utils.get_plot_imgs(graph, G, self.ground_truth_G)
             wandb.log({"train/graph": wandb.Image(graph_img)})
             wandb.log({"train/adj": wandb.Image(adj_img)})
-            
-        # update best
-        loss  = np.sum(d['loss'] for d in outputs) / (len(outputs)) # * self.hparams.batch_size)
-        if loss < self.best_loss:
-            self.best_loss = loss
-            self.best_loss_G = G
-        if accu['shd'] < self.best_shd:
-            self.best_shd_G = G
-            self.best_shd = accu['shd']
-        if accu['tpr'] > self.best_tpr:
-            self.best_tpr_G = G
-            self.best_tpr = accu['tpr']
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())

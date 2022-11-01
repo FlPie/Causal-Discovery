@@ -16,14 +16,14 @@ import pytorch_lightning as pl
 
 import wandb
 
-from .components.DAG_GCN_components import DAG_GCN_Encoder, DAG_GCN_Decoder
+from .components.DAG_GCN_components import DAG_GCN_VEncoder, DAG_GCN_VDecoder
 from .components import DAG_utils as DAG_utils
 
 
-class DAG_GCN(pl.LightningModule):
+class DAG_GCN_VGAE(pl.LightningModule):
     def __init__(self,
-                 encoder: DAG_GCN_Encoder,
-                 decoder: DAG_GCN_Decoder,
+                 encoder: DAG_GCN_VEncoder,
+                 decoder: DAG_GCN_VDecoder,
                  optimizer: torch.optim.Optimizer,
                  scheduler: torch.optim.lr_scheduler._LRScheduler=None,
                  lambda_A: float=0.0,
@@ -64,40 +64,33 @@ class DAG_GCN(pl.LightningModule):
         self.gamma = gamma
         self.graph_threshold = graph_threshold
 
-        self.best_shd_G = self.ground_truth_G
-        self.best_shd = np.inf
-        self.best_tpr_G = self.ground_truth_G
-        self.best_tpr = 0
-        self.best_loss_G = self.ground_truth_G
-        self.best_loss = np.inf
+        self.save_hyperparameters(ignore=['encoder', 'decder'])
 
     def forward(self, X):
-        Z, self.dense_adj = self.encoder(X)
-        X_hat = self.decoder(Z, self.dense_adj)
-        return Z, self.dense_adj, X_hat
+        mu, logstd, self.dense_adj = self.encoder(X)
+        mu_x, logstd_x = self.decoder(mu, logstd, self.dense_adj)
+        return mu, logstd, self.dense_adj, mu_x, logstd_x
     
     def step(self, batch, batch_idx):
-        Z, self.dense_adj, X_hat = self.forward(batch[batch_idx])
+        mu, logstd, self.dense_adj, mu_x, logstd_x = self.forward(batch[batch_idx])
         loss, losses = self.loss(batch[batch_idx].squeeze(), 
-                                 Z.squeeze(), 
-                                 self.dense_adj, 
-                                 X_hat.squeeze())
-        return Z, self.dense_adj, X_hat, loss, losses
+                                 mu.squeeze(), 
+                                 logstd.squeeze(),
+                                 mu_x.squeeze(),
+                                 logstd_x.squeeze(),
+                                 self.dense_adj,
+                                 )
+        return mu, logstd, self.dense_adj, mu_x, logstd_x, loss, losses
 
     def on_train_start(self):
         gt_graph_img, gt_adj_img = DAG_utils.get_plot_imgs(self.gt_df, self.ground_truth_G, self.ground_truth_G)
         wandb.log({'gt/graph': wandb.Image(gt_graph_img)})
         wandb.log({'gt/adj': wandb.Image(gt_adj_img)})
-        # init bests
-        self.best_shd = np.inf
-        self.best_tpr = 0
-        self.best_loss = np.inf
 
     def training_step(self, batch, batch_idx):
-        Z, self.dense_adj, X_hat, loss, losses = self.step(batch, batch_idx)
+        mu, logstd, self.dense_adj, mu_x, logstd_x, loss, losses = self.step(batch, batch_idx)
         self.log('train/loss', loss, on_step=False, on_epoch=True, prog_bar=False)
         self.log('train/losses', losses, on_step=False, on_epoch=True, prog_bar=False)
-        # update best
         return {"loss": loss}
 
     def training_epoch_end(self, outputs):
@@ -117,18 +110,6 @@ class DAG_GCN(pl.LightningModule):
             graph_img, adj_img = DAG_utils.get_plot_imgs(graph, G, self.ground_truth_G)
             wandb.log({"train/graph": wandb.Image(graph_img)})
             wandb.log({"train/adj": wandb.Image(adj_img)})
-            
-        # update best
-        loss  = np.sum(d['loss'] for d in outputs) / (len(outputs)) # * self.hparams.batch_size)
-        if loss < self.best_loss:
-            self.best_loss = loss
-            self.best_loss_G = G
-        if accu['shd'] < self.best_shd:
-            self.best_shd_G = G
-            self.best_shd = accu['shd']
-        if accu['tpr'] > self.best_tpr:
-            self.best_tpr_G = G
-            self.best_tpr = accu['tpr']
 
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters())
@@ -137,11 +118,12 @@ class DAG_GCN(pl.LightningModule):
             return [optimizer], [scheduler]
         return optimizer
 
-    def loss(self, X, Z, dense_adj, X_hat):
+    def loss(self, X, mu, logstd, mu_x, logstd_x, dense_adj):
         # reconstruction accuracy loss
-        NLL_loss = self._nll_gaussian(X, X_hat)
+        NLL_loss = self._nll_gaussian(X, mu_x, logstd_x)
+        # Binary_CE = self._binary_cross_entropy(X, mu_x, logstd_x)
         # KL loss
-        KL_loss = self._kl_gaussian_sem(Z)
+        KL_loss = self._kl_gaussian(mu, logstd)
         # ELBO loss
         loss = KL_loss + NLL_loss
         # sparse loss
@@ -154,25 +136,32 @@ class DAG_GCN(pl.LightningModule):
             + 100 * torch.trace(dense_adj * dense_adj)
             + sparse_loss
         )
+        X_hat = mu_x + torch.randn_like(logstd_x) * torch.exp(logstd_x)
         losses = {
             "ELBO_loss": NLL_loss + KL_loss,
             "NLL_loss": NLL_loss,
             "KL_loss": KL_loss,
             "MSE_loss": torch.nn.MSELoss()(X, X_hat),
         }
+        # loss = Binary_CE + KL_loss
         return loss, losses
 
-    def _nll_gaussian(self, X, X_hat, variance=0.0, add_const=False):
+    def _nll_gaussian(self, X, mu_x, logstd_x, add_const=False):
         # DAG-GNN paper equation (9)
-        neg_log_p = variance + torch.div(torch.pow(X_hat - X, 2), 2.0 * np.exp(2.0 * variance))
+        neg_log_p = logstd_x + torch.div(torch.pow(X - mu_x, 2), 
+                                         2.0 * torch.exp(2.0 * logstd_x))
         if add_const:
-            const = 0.5 * torch.log(2 * torch.from_numpy(np.pi) * variance)
+            const = 0.5 * torch.log(2 * torch.from_numpy(np.pi) * logstd_x)
             neg_log_p += const
         return torch.mean(neg_log_p)
+
+    def _binary_cross_entropy(self, X, mu_x, logstd_x):
+        X_hat = mu_x + torch.randn_like(logstd_x) * torch.exp(logstd_x)
+        return torch.nn.functional.binary_cross_entropy_with_logits(X_hat, X)
     
-    def _kl_gaussian_sem(self, Z):
+    def _kl_gaussian(self, mu, logstd):
         # DAG-GNN paper equation (8)
-        return 0.5 * (torch.sum(Z**2, dim=0) / Z.size(0))
+        return 0.5 * torch.mean((torch.sum(torch.exp(2*logstd) - 2*logstd + mu**2 - 1)))
 
     def _sparse_loss(self, adj, tau=0.1):
         return tau * torch.sum(torch.abs(adj))

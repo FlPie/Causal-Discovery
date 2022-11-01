@@ -1,0 +1,6 @@
+_target_: src.loops.GAE_loop.GAE_FitLoop
+
+min_epochs: ${trainer.min_epochs}
+max_epochs: ${trainer.max_epochs}
+
+k_max_iter: 10

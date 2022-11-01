@@ -1,10 +1,10 @@
-_target_: src.models.DAG_GCN.DAG_GCN
+_target_: src.models.DAG_GCN_VGAE.DAG_GCN_VGAE
 
 activation: torch.nn.LeakyReLU
 batch_norm: true
 init: true
 encoder:
-  _target_: src.models.components.DAG_GCN_components.DAG_GCN_Encoder
+  _target_: src.models.components.DAG_GCN_components.DAG_GCN_VEncoder
   in_channels: 1 # feature size
   H1: 64
   H2: 64
@@ -15,7 +15,7 @@ encoder:
   batch_norm: ${model.batch_norm}
   num_features: ${model.num_features}
 decoder:
-  _target_: src.models.components.DAG_GCN_components.DAG_GCN_Decoder
+  _target_: src.models.components.DAG_GCN_components.DAG_GCN_VDecoder
   in_channels: 1
   H3: 64
   H2: 64
@@ -29,7 +29,7 @@ decoder:
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 1e-3
+  lr: 1e-4
   weight_decay: 0.0
 
 # scheduler:

@@ -29,7 +29,7 @@ def get_graph_figure(G1: nx.Graph, G2: nx.Graph, **kwargs) -> figure:
         figure: Matplotlib figure.Figure with graph drawn.
     """
     options = {
-        "prog": "patchwork",
+        "prog": "circo",
         "graph": {
             "font_size": 15,
             "node_size": 2000,
@@ -124,6 +124,16 @@ def figure2image(fig: figure) -> PIL.Image:
     return PIL.Image.frombytes("RGB",
                                fig.canvas.get_width_height(),
                                fig.canvas.tostring_rgb())
+
+
+def get_plot_imgs(graph, G: nx.Graph, ground_truth_G: nx.Graph):
+    graph_fig = get_graph_figure(G, ground_truth_G)
+    graph_img = fig2img(graph_fig)
+
+    adj_fig = get_adj_figure(graph)
+    adj_img = fig2img(adj_fig)
+
+    return graph_img, adj_img
 
 
 def count_accuracy(

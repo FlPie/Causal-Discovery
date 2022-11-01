@@ -1,0 +1,37 @@
+_target_: src.models.GAE_module.GAE
+
+input_dim: 1
+num_hidden_layer: 3
+hidden_dim: 16
+output_dim: 1
+
+activation:
+  _target_: torch.nn.LeakyReLU
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 1e-3
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  _partial_: true
+  step_size: 3000
+  gamma: 0.1
+
+l1_penalty: 0.0
+alpha: 0.0
+beta: 2.0
+gamma: 0.25
+rho: 1.0
+rho_threshold: 1e30
+
+num_features: 11
+batch_size: 512
+graph_threshold: 0.3
+
+plot_every: 10
+
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+raw_path: ${paths.data_dir}/sachs_dataset/raw/sachs.csv

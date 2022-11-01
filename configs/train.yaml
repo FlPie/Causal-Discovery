@@ -19,7 +19,7 @@ defaults:
   - experiment: DAG_GCN.yaml
 
   # config for hyperparameter optimization
-  - hparams_search: null
+  - hparams_search: null # DAG_GCN_optuna.yaml
 
   # optional local config for machine/user specific settings
   # it's optional since it doesn't need to exist and is excluded from version control
@@ -50,5 +50,3 @@ ckpt_path: null
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 42
-
-k_max_iter: 10

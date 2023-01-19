@@ -14,4 +14,4 @@ n_layers: 5
 lambda_sparsity: 1.0
 psp: True
 
-gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt_bn.csv

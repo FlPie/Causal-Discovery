@@ -9,4 +9,4 @@ optimizer:
 num_features: 11
 batch_size: 512
 hidden_size: 64
-gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt_bn.csv

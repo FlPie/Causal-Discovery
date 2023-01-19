@@ -20,7 +20,7 @@ from .components.DAG_GCN_components import DAG_GCN_Encoder, DAG_GCN_Decoder
 from .components import DAG_utils as DAG_utils
 
 
-class DAG_GCN(pl.LightningModule):
+class DAG_Diffution(pl.LightningModule):
     def __init__(self,
                  encoder: DAG_GCN_Encoder,
                  decoder: DAG_GCN_Decoder,

@@ -18,5 +18,5 @@ hidden_size: 64
 gcn_size: 16
 threshold: 0.3
 
-gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt_bn.csv
 raw_path: ${paths.data_dir}/sachs_dataset/raw/sachs.csv

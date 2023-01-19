@@ -7,4 +7,17 @@ defaults:
   - override /model: DAG_GCN.yaml
   - override /loop: DAG_GCN_loop.yaml
 
+trainer: 
+  max_epochs: 300
+
+loop:
+  k_max_iter: 100
+
+logger:
+  wandb:
+    offline: True
+    name: "DAG_GCN_bn_init_norm"
+    project: "DAG_GCN_optuna"
+    entity: "flpie"
+
 tags: ["sachs", "DAG_GCN"]

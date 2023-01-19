@@ -52,16 +52,20 @@ def get_graph_figure(G1: nx.Graph, G2: nx.Graph, **kwargs) -> figure:
     }
     options.update(kwargs)
 
-    I = nx.intersection(G1, G2)
-    R = nx.intersection(G1, nx.reverse(G2))
-
-    pos = nx.nx_agraph.graphviz_layout(G2, prog=options.get("prog"))
-
     ax = plt.subplot()
 
+    if G2 is not None:
+        I = nx.intersection(G1, G2)
+        R = nx.intersection(G1, nx.reverse(G2))
+
+        pos = nx.nx_agraph.graphviz_layout(G2, prog=options.get("prog"))
+
+        nx.draw_networkx_edges(I, pos, ax=ax, **options.get("intersectioned"))
+        nx.draw_networkx_edges(R, pos, ax=ax, **options.get("reversed"))
+    else:
+        pos = nx.nx_agraph.graphviz_layout(G1, prog=options.get("prog"))
+
     nx.draw(G1, pos, ax=ax, **options.get("graph"))
-    nx.draw_networkx_edges(I, pos, ax=ax, **options.get("intersectioned"))
-    nx.draw_networkx_edges(R, pos, ax=ax, **options.get("reversed"))
 
     fig = ax.get_figure()
     plt.close()

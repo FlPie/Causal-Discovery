@@ -14,6 +14,7 @@ encoder:
     _target_: ${model.activation}
   batch_norm: ${model.batch_norm}
   num_features: ${model.num_features}
+  init: ${model.init}
 decoder:
   _target_: src.models.components.DAG_GCN_components.DAG_GCN_Decoder
   in_channels: 1
@@ -25,6 +26,7 @@ decoder:
     _target_: ${model.activation}
   batch_norm: ${model.batch_norm}
   num_features: ${model.num_features}
+  init: ${model.init}
 
 optimizer:
   _target_: torch.optim.Adam
@@ -52,5 +54,5 @@ adj_low: -0.1
 
 plot_every: 10
 
-gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt.csv
+gt_path: ${paths.data_dir}/sachs_dataset/sachs_gt_bn.csv
 raw_path: ${paths.data_dir}/sachs_dataset/raw/sachs.csv

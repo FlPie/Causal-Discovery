@@ -153,3 +153,11 @@ logs/
 
 # logging
 wandb/
+
+notebooks/plots
+notebooks/plots2
+
+train_epoch300_iter100.json
+train_epoch300_iter100_2.json
+
+nohup.out

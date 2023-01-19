@@ -15,7 +15,10 @@ ______________________________________________________________________
 
 ## Description
 
-What it does
+Causal Discovery models using pytorch-lightning.
+- **DAG-GCN (My model)**
+- DAG-GNN
+- etc...
 
 ## How to run
 
@@ -23,8 +26,8 @@ Install dependencies
 
 ```bash
 # clone project
-git clone https://github.com/YourGithubName/your-repo-name
-cd your-repo-name
+git clone https://github.com/FlPie/Causal-Discovery
+cd Causal-Discovery
 
 # [OPTIONAL] create conda environment
 conda create -n myenv python=3.9
